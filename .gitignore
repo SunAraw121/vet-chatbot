@@ -1,0 +1,35 @@
+# Dependencies
+node_modules/
+package-lock.json
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# Build outputs
+dist/
+build/
+*.log
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Test files (keep test.html in public)
+backend/test-*.js
+backend/list-models.js
+backend/check-api.js
+backend/src/controllers/chat.controller.js.new
+backend/src/controllers/chat.controller.js.backup
+
+# Temporary files
+*.tmp
+*.temp
