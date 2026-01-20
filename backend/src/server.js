@@ -16,10 +16,20 @@ const app = express();
 
 /**
  * 2️⃣ Middleware
- * These depend on `app`, so they must come AFTER it.
  */
-app.use(cors());
+app.use(cors({
+  origin: "*", // Allow all origins for the SDK to work anywhere
+  methods: ["GET", "POST", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"]
+}));
+
 app.use(express.json());
+
+// Request Logging Middleware
+app.use((req, res, next) => {
+  console.log(`📡 [${new Date().toISOString()}] ${req.method} ${req.url}`);
+  next();
+});
 
 /**
  * 3️⃣ Serve public files (SDK)
