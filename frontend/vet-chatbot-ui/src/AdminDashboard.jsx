@@ -12,7 +12,7 @@ const AdminDashboard = () => {
 
     const fetchAppointments = async () => {
         try {
-            const response = await axios.get('http://localhost:4000/api/appointments');
+            const response = await axios.get('https://vet-chatbot-backend-uon9.onrender.com/api/appointments');
             setAppointments(response.data);
         } catch (err) {
             console.error("Failed to fetch appointments", err);

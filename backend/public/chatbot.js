@@ -24,12 +24,12 @@
   // For local development, we point it to the backend's static file server.
   const script = document.createElement('script');
   script.type = 'module';
-  script.src = 'http://localhost:4000/assets/index.js'; // This will be the built bundle
+  script.src = 'https://vet-chatbot-backend-uon9.onrender.com/assets/index.js'; // This will be the built bundle
 
   // Also load the styles
   const link = document.createElement('link');
   link.rel = 'stylesheet';
-  link.href = 'http://localhost:4000/assets/index.css';
+  link.href = 'https://vet-chatbot-backend-uon9.onrender.com/assets/index.css';
 
   document.head.appendChild(link);
   document.head.appendChild(script);
