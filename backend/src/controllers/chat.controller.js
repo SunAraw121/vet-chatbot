@@ -242,3 +242,17 @@ export async function getConversationHistory(req, res) {
     return res.status(500).json({ error: "Internal server error" });
   }
 }
+
+/**
+ * Get all appointments (Admin)
+ */
+export async function getAppointments(req, res) {
+  try {
+    const appointments = await Appointment.find().sort({ createdAt: -1 });
+    return res.json(appointments);
+  } catch (error) {
+    console.error("Error fetching appointments:", error);
+    return res.status(500).json({ error: "Internal server error" });
+  }
+}
+

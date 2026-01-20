@@ -1,5 +1,5 @@
 import express from "express";
-import { handleChat, getConversationHistory } from "../controllers/chat.controller.js";
+import { handleChat, getConversationHistory, getAppointments } from "../controllers/chat.controller.js";
 
 const router = express.Router();
 
@@ -8,5 +8,8 @@ router.post("/chat", handleChat);
 
 // GET /api/conversations/:sessionId - Get conversation history
 router.get("/conversations/:sessionId", getConversationHistory);
+
+// GET /api/appointments - Get all appointments (Admin)
+router.get("/appointments", getAppointments);
 
 export default router;

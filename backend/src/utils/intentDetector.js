@@ -5,7 +5,9 @@ export function detectIntent(message) {
     text.includes("book") ||
     text.includes("appointment") ||
     text.includes("schedule") ||
-    text.includes("vet visit")
+    text.includes("vet visit") ||
+    text.includes("see a vet") ||
+    text.includes("checkup")
   ) {
     return "BOOK_APPOINTMENT";
   }

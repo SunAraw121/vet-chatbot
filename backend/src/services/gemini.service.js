@@ -34,13 +34,16 @@ If a question is unrelated to veterinary care, politely say that you cannot help
         role: msg.role === "user" ? "user" : "model",
         parts: [{ text: msg.content }]
       })),
-      systemInstruction: systemPrompt
+      systemInstruction: {
+        parts: [{ text: systemPrompt }]
+      }
     });
 
     const result = await chat.sendMessage(userMessage);
     return result.response.text();
   } catch (error) {
-    console.error("Gemini API Error:", error);
+    console.error("Gemini API Error Full Details:", JSON.stringify(error, null, 2));
+    console.error("Stack:", error.stack);
     if (error.message?.includes("API_KEY_INVALID")) {
       return "I'm having trouble connecting to my AI brain (invalid API key). Please check the backend configuration.";
     }
