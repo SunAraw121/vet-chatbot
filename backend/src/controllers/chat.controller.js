@@ -15,6 +15,7 @@ import { getVetAIResponse } from "../services/gemini.service.js";
  * - Persist messages and appointments
  */
 export async function handleChat(req, res) {
+  console.log(`💬 handleChat called for session ${req.body.sessionId}`);
   try {
     const { sessionId, message, context } = req.body;
 
