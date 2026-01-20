@@ -29,20 +29,26 @@ You must NOT:
 If a question is unrelated to veterinary care, politely say that you cannot help with that topic.`;
 
   try {
-    const chat = model.startChat({
-      history: conversationHistory.map(msg => ({
-        role: msg.role === "user" ? "user" : "model",
-        parts: [{ text: msg.content }]
-      })),
+    console.log(`🤖 Requesting Gemini for: "${userMessage.substring(0, 50)}..."`);
+    const model = genAI.getGenerativeModel({
+      model: "gemini-2.5-flash",
       systemInstruction: {
         parts: [{ text: systemPrompt }]
       }
     });
 
+    const chat = model.startChat({
+      history: conversationHistory.map(msg => ({
+        role: msg.role === "user" ? "user" : "model",
+        parts: [{ text: msg.content }]
+      }))
+    });
+
     const result = await chat.sendMessage(userMessage);
-    return result.response.text();
+    const response = await result.response;
+    return response.text();
   } catch (error) {
-    console.error("Gemini API Error Full Details:", JSON.stringify(error, null, 2));
+    console.error("❌ Gemini API Service Error: Full Details:", JSON.stringify(error, null, 2));
     console.error("Stack:", error.stack);
     if (error.message?.includes("API_KEY_INVALID")) {
       return "I'm having trouble connecting to my AI brain (invalid API key). Please check the backend configuration.";
