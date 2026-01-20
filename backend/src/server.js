@@ -17,6 +17,7 @@ app.use(express.json());
 app.use(cors({
   origin: [
     "https://vet-chatbot.vercel.app",
+    "https://vet-chatbot-server.vercel.app",
     "http://localhost:3000",
     "http://localhost:5173"
   ],
