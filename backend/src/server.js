@@ -14,6 +14,8 @@ const __dirname = path.dirname(__filename);
 
 const app = express();
 
+console.log("🛠️ Initializing Middleware...");
+
 // 1. Aggressive Manual CORS
 app.use((req, res, next) => {
   res.header("Access-Control-Allow-Origin", "*");
@@ -47,7 +49,6 @@ app.get("/", (req, res) => {
 app.use("/api", chatRoutes);
 
 // 5. Static Files (SDK)
-// Using absolute path for safety
 const publicPath = path.join(__dirname, "..", "public");
 app.use(express.static(publicPath));
 
@@ -55,13 +56,11 @@ app.use(express.static(publicPath));
 if (!process.env.MONGO_URI) {
   console.error("❌ CRITICAL: MONGO_URI is missing!");
 } else {
-  // Use connect without deprecated options
   mongoose
     .connect(process.env.MONGO_URI)
     .then(() => console.log("✅ MongoDB connected successfully"))
     .catch(err => {
       console.error("❌ MongoDB connection error:", err.message);
-      // Don't exit the process, let the health check live
     });
 }
 
@@ -73,7 +72,9 @@ app.use((err, req, res, next) => {
 
 // 8. Start
 const PORT = process.env.PORT || 4000;
-app.listen(PORT, "0.0.0.0", () => {
-  console.log(`🚀 Server starting on port ${PORT}`);
-  console.log(`📂 Public Dir: ${publicPath}`);
+console.log(`⌛ Attempting to listen on port ${PORT}...`);
+
+app.listen(PORT, () => {
+  console.log(`🚀 Server fully operational on port ${PORT}`);
+  console.log(`📂 Serving static files from: ${publicPath}`);
 });
