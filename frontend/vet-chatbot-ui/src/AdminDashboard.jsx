@@ -12,7 +12,12 @@ const AdminDashboard = () => {
 
     const fetchAppointments = async () => {
         try {
-            const response = await axios.get('https://vet-chatbot-backend-uon9.onrender.com/api/appointments');
+            const hostname = window.location.hostname;
+            const apiBase = (hostname === "localhost" || hostname === "127.0.0.1")
+                ? "http://localhost:4000/api"
+                : (hostname.includes("onrender.com") ? "/api" : "https://vet-chatbot-backend-uon9.onrender.com/api");
+
+            const response = await axios.get(`${apiBase}/appointments`);
             setAppointments(response.data);
         } catch (err) {
             console.error("Failed to fetch appointments", err);

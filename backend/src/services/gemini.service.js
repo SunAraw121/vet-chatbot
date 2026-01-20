@@ -2,11 +2,8 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 
 /**
  * Generate a veterinary-only AI response
- * @param {string} userMessage
- * @param {Array} conversationHistory
  */
 export async function getVetAIResponse(userMessage, conversationHistory) {
-  // Initialize inside the function to ensure process.env.GEMINI_API_KEY is loaded
   const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
   const systemPrompt = `You are "Dr. Paw", a friendly and highly knowledgeable veterinary assistant. 
@@ -22,12 +19,9 @@ GUIDELINES:
 - If the user wants to book an appointment, let the system handle the booking flow, but you can say "I can help you with that! Just say 'Book Appointment'."`;
 
   try {
-    console.log(`🤖 Requesting Gemini for: "${userMessage.substring(0, 50)}..."`);
     const model = genAI.getGenerativeModel({
-      model: "gemini-1.5-flash", // Use 1.5 flash for better reliability and performance
-      systemInstruction: {
-        parts: [{ text: systemPrompt }]
-      }
+      model: "gemini-1.5-flash",
+      systemInstruction: { parts: [{ text: systemPrompt }] }
     });
 
     const chat = model.startChat({
@@ -42,9 +36,38 @@ GUIDELINES:
     return response.text();
   } catch (error) {
     console.error("❌ Gemini API Service Error:", error);
-    if (error.message?.includes("API_KEY_INVALID")) {
-      return "I'm having trouble connecting to my AI brain (invalid API key). Please check the backend configuration.";
-    }
     return "I'm sorry, I'm having a bit of trouble answering that right now. Could you please try again?";
+  }
+}
+
+/**
+ * Detect if a user wants to book an appointment using AI for better precision
+ */
+export async function detectIntentWithAI(message) {
+  const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+
+  const prompt = `Classify the following user message into ONE of two categories: "BOOK_APPOINTMENT" or "GENERAL_QUERY".
+  "BOOK_APPOINTMENT" is for when the user EXPLICITLY wants to schedule, book, or make an appointment for a vet visit.
+  "GENERAL_QUERY" is for everything else, including greetings, generic vet questions, or talk about past visits.
+
+  Message: "${message}"
+  Category:`;
+
+  try {
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    const result = await model.generateContent(prompt);
+    const response = await result.response;
+    const text = response.text().trim().toUpperCase();
+
+    if (text.includes("BOOK_APPOINTMENT")) return "BOOK_APPOINTMENT";
+    return "GENERAL_QUERY";
+  } catch (error) {
+    console.error("❌ Intent Detection Error:", error);
+    // Fallback to basic keywords
+    const lower = message.toLowerCase();
+    if (lower.includes("book") || lower.includes("appointment") || lower.includes("schedule")) {
+      return "BOOK_APPOINTMENT";
+    }
+    return "GENERAL_QUERY";
   }
 }

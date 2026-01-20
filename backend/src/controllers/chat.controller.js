@@ -1,45 +1,22 @@
 import Session from "../models/Session.js";
 import Appointment from "../models/Appointment.js";
 
-import { detectIntent } from "../utils/intentDetector.js";
 import { getNextAppointmentQuestion } from "../utils/appointmentFlow.js";
-
-import { getVetAIResponse } from "../services/gemini.service.js";
+import { getVetAIResponse, detectIntentWithAI } from "../services/gemini.service.js";
 
 /**
  * Main chat handler
- * Responsibility:
- * - Maintain conversation state
- * - Detect intent
- * - Handle appointment booking flow
- * - Persist messages and appointments
  */
 export async function handleChat(req, res) {
-  console.log(`💬 handleChat called for session ${req.body.sessionId}`);
   try {
     const { sessionId, message, context } = req.body;
 
-    /* --------------------------------------------------
-     * 1️⃣ Basic request validation
-     * --------------------------------------------------
-     * We cannot process a chat message without:
-     * - sessionId → identifies the conversation
-     * - message   → user input
-     */
     if (!sessionId || !message) {
-      return res.status(400).json({
-        error: "sessionId and message required"
-      });
+      return res.status(400).json({ error: "sessionId and message required" });
     }
 
-    /* --------------------------------------------------
-     * 2️⃣ Fetch or create session
-     * --------------------------------------------------
-     * A session represents ONE conversation.
-     * If it does not exist, this is the first message.
-     */
+    // 1. Fetch or create session
     let session = await Session.findOne({ sessionId });
-
     if (!session) {
       session = await Session.create({
         sessionId,
@@ -50,56 +27,49 @@ export async function handleChat(req, res) {
       });
     }
 
-    /* --------------------------------------------------
-     * 3️⃣ Persist user message immediately
-     * --------------------------------------------------
-     * This guarantees:
-     * - no data loss
-     * - correct conversation history
-     * - reliable debugging/audit trail
-     */
-    session.messages.push({
-      role: "user",
-      content: message
-    });
+    // 2. Global Reset Logic
+    if (message.toLowerCase() === "reset" || message.toLowerCase() === "clear") {
+      session.appointmentDraft = {};
+      session.lastIntent = "GENERAL_QUERY";
+      session.messages = [];
+      await session.save();
+      return res.json({ reply: "Session reset! How can I help you today?", sessionId });
+    }
 
-    /* --------------------------------------------------
-     * 4️⃣ Intent detection (state-aware)
-     * --------------------------------------------------
-     * If we are already in BOOK_APPOINTMENT,
-     * we DO NOT re-detect intent.
-     */
+    // 3. User Message Persistence
+    session.messages.push({ role: "user", content: message });
+
+    let botReply = "";
     let intent = session.lastIntent;
-    let intentJustChanged = false;
 
-    // Detect intent change and immediately ask for the first piece of info
+    // 4. Intent Detection (Only if not already in deep booking)
     if (intent === "GENERAL_QUERY") {
-      const newIntent = detectIntent(message);
-      if (newIntent === "BOOK_APPOINTMENT") {
-        intent = "BOOK_APPOINTMENT";
-        session.lastIntent = intent;
-        intentJustChanged = true;
+      // Check for keywords first to avoid unnecessary AI calls
+      const lowerMsg = message.toLowerCase();
+      const hasBookingKeywords = ["book", "appointment", "schedule", "vet visit"].some(k => lowerMsg.includes(k));
 
-        // Reset any stale draft and ask for the owner's name
-        session.appointmentDraft = {};
+      if (hasBookingKeywords) {
+        intent = await detectIntentWithAI(message);
+        if (intent === "BOOK_APPOINTMENT") {
+          session.lastIntent = "BOOK_APPOINTMENT";
+          session.appointmentDraft = {};
+        }
       }
     }
 
-    let botReply = "";
+    // 5. Booking Flow Logic
+    if (intent === "BOOK_APPOINTMENT") {
+      const draft = session.appointmentDraft || {};
 
-    /* --------------------------------------------------
-     * 5️⃣ Confirmation handling (YES / NO)
-     * --------------------------------------------------
-     */
-    if (
-      intent === "BOOK_APPOINTMENT" &&
-      session.appointmentDraft?.datetime &&
-      !intentJustChanged // If we just shifted to BOOK_APPOINTMENT, it can't be a confirmation yet
-    ) {
-      if (message.toLowerCase() === "yes") {
-        const draft = session.appointmentDraft;
-
-        // Create final appointment record
+      // Exit booking flow explicitly
+      if (["cancel", "stop", "exit", "no"].includes(message.toLowerCase())) {
+        session.appointmentDraft = {};
+        session.lastIntent = "GENERAL_QUERY";
+        // Handle as a general query instead of just stopping
+        botReply = await getVetAIResponse(message, session.messages);
+      }
+      // Handle confirmation
+      else if (draft.datetime && message.toLowerCase() === "yes") {
         await Appointment.create({
           sessionId,
           ownerName: draft.ownerName,
@@ -107,162 +77,51 @@ export async function handleChat(req, res) {
           phone: draft.phone,
           datetime: draft.datetime
         });
-
-        // Reset conversation state
         session.appointmentDraft = {};
         session.lastIntent = "GENERAL_QUERY";
-
-        botReply = "✅ Your appointment has been booked successfully! Is there anything else I can help you with?";
-      } else if (message.toLowerCase() === "no" || message.toLowerCase() === "restart") {
-        // Reset draft and restart
-        session.appointmentDraft = {};
-        botReply = "No problem! Let's restart the booking. What is your name?";
+        botReply = "✅ Appointment booked! See you then. Is there anything else?";
       }
-    }
+      // Slot Filling
+      else {
+        if (!draft.ownerName) draft.ownerName = message;
+        else if (!draft.petName) draft.petName = message;
+        else if (!draft.phone) draft.phone = message;
+        else if (!draft.datetime) draft.datetime = message;
 
-    /* --------------------------------------------------
-     * 6️⃣ Appointment slot-filling flow
-     * --------------------------------------------------
-     */
-    else if (intent === "BOOK_APPOINTMENT") {
-      const draft = session.appointmentDraft || {};
-
-      // Basic restart detection at any point
-      if (["restart", "cancel", "stop", "no"].includes(message.toLowerCase())) {
-        session.appointmentDraft = {};
-        session.lastIntent = "GENERAL_QUERY";
-        botReply = "Booking cancelled. How else can I help you today?";
-      } else if (intentJustChanged) {
-        // If we just switched to booking mode, ask for the first piece of info
-        botReply = "Sure! Let's get your appointment set up. What is your name?";
-      } else {
-        // Fill the next missing slot
-        if (!draft.ownerName) {
-          draft.ownerName = message;
-        } else if (!draft.petName) {
-          draft.petName = message;
-        } else if (!draft.phone) {
-          // Basic phone validation (just check length for simplicity)
-          if (message.length < 10) {
-            botReply = "That doesn't look like a valid phone number. Please provide a 10-digit number.";
-          } else {
-            draft.phone = message;
-          }
-        } else if (!draft.datetime) {
-          draft.datetime = message;
-        }
-      }
-
-      session.appointmentDraft = draft;
-
-      // Only decide next question if we haven't already set a botReply (e.g. for validation error)
-      if (!botReply) {
+        session.appointmentDraft = draft;
         const nextQuestion = getNextAppointmentQuestion(draft);
 
         if (nextQuestion) {
           botReply = nextQuestion;
         } else {
-          // All slots filled → ask for confirmation
-          botReply = `Please confirm your appointment details:
-  
-- **Owner**: ${draft.ownerName}
-- **Pet**: ${draft.petName}
-- **Phone**: ${draft.phone}
-- **Date & Time**: ${draft.datetime}
-
-Reply **YES** to confirm or **NO** to restart.`;
+          botReply = `Please confirm your details:\n- **Owner**: ${draft.ownerName}\n- **Pet**: ${draft.petName}\n- **Phone**: ${draft.phone}\n- **Date**: ${draft.datetime}\n\nReply **YES** to confirm or **CANCEL** to exit.`;
         }
       }
     }
-
-    /* --------------------------------------------------
-     * 7️⃣ Default response (non-booking)
-     * --------------------------------------------------
-     * Temporary placeholder.
-     * This will be replaced by Gemini AI in Phase 4.
-     */
+    // 6. General AI Response
     else {
-      botReply = await getVetAIResponse(
-        message,
-        session.messages
-      );
+      botReply = await getVetAIResponse(message, session.messages);
     }
 
-    /* --------------------------------------------------
-     * 8️⃣ Store bot response
-     * --------------------------------------------------
-     * We store bot messages for:
-     * - chat history replay
-     * - AI context
-     */
-    session.messages.push({
-      role: "bot",
-      content: botReply
-    });
-
-    /* --------------------------------------------------
-     * 9️⃣ Update session timestamp & persist
-     * --------------------------------------------------
-     */
+    // 7. Bot Message Persistence & Cleanup
+    session.messages.push({ role: "bot", content: botReply });
     session.updatedAt = new Date();
     await session.save();
 
-    /* --------------------------------------------------
-     * 🔟 Respond to frontend
-     * --------------------------------------------------
-     */
-    return res.json({
-      reply: botReply,
-      sessionId
-    });
+    return res.json({ reply: botReply, sessionId });
   } catch (error) {
     console.error("Critical Chat Handler Error:", error);
-    return res.status(500).json({
-      error: "Internal server error",
-      message: error.message
-    });
+    return res.status(500).json({ error: "Internal server error" });
   }
 }
-/**
- * Get conversation history for a session
- */
+
 export async function getConversationHistory(req, res) {
-  try {
-    const { sessionId } = req.params;
-
-    if (!sessionId) {
-      return res.status(400).json({ error: "sessionId is required" });
-    }
-
-    const session = await Session.findOne({ sessionId });
-
-    if (!session) {
-      return res.status(404).json({ error: "Session not found" });
-    }
-
-    return res.json({
-      sessionId: session.sessionId,
-      messages: session.messages,
-      context: session.context,
-      createdAt: session.createdAt,
-      updatedAt: session.updatedAt
-    });
-  } catch (error) {
-    console.error("Error fetching conversation history:", error);
-    return res.status(500).json({ error: "Internal server error" });
-  }
+  const session = await Session.findOne({ sessionId: req.params.sessionId });
+  if (!session) return res.status(404).json({ error: "Session not found" });
+  return res.json(session);
 }
 
-/**
- * Get all appointments (Admin)
- */
 export async function getAppointments(req, res) {
-  try {
-    const appointments = await Appointment.find().sort({ createdAt: -1 });
-    return res.json(appointments);
-  } catch (error) {
-    console.error("Error fetching appointments:", error);
-    return res.status(500).json({ error: "Internal server error" });
-  }
+  const appointments = await Appointment.find().sort({ createdAt: -1 });
+  return res.json(appointments);
 }
-
