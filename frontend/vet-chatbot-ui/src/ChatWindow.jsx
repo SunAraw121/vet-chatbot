@@ -34,7 +34,12 @@ export default function ChatWindow({ sessionId, context, onClose }) {
       // Show bot reply
       setMessages(prev => [...prev, { role: "bot", content: res.reply }]);
     } catch (err) {
-      setError("Something went wrong. Please try again.");
+      console.error("Chat Error Detailed:", err);
+      if (err.response) {
+        console.error("Response Data:", err.response.data);
+        console.error("Response Status:", err.response.status);
+      }
+      setError("Something went wrong. Please check console (F12) for details.");
     } finally {
       setLoading(false);
     }
