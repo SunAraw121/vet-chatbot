@@ -19,59 +19,72 @@ const __dirname = path.dirname(__filename);
 const app = express();
 
 /**
- * 0. GLOBAL LOGGER & CORS
- * We must use manual headers to be 100% sure they are sent.
+ * 💥 ABSOLUTE PRIORITY LOGGING & CORS
+ * Defined before ANY other middleware.
  */
 app.use((req, res, next) => {
-  console.log(`📡 [${new Date().toISOString()}] ${req.method} ${req.url}`);
+  console.log(`🔥 [HIT] ${req.method} ${req.url}`);
   res.header("Access-Control-Allow-Origin", "*");
   res.header("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
   res.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
+  res.header("X-Backend-Server", "Veterinary-Chatbot-Final-Fix");
 
-  if (req.method === "OPTIONS") {
-    return res.sendStatus(200);
-  }
+  if (req.method === "OPTIONS") return res.sendStatus(200);
   next();
 });
 
 app.use(express.json());
 
 /**
- * 1. ROOT ROUTES (Skip the /api prefix entirely for Render stability)
+ * 📍 EMERGENCY TOP-LEVEL ROUTES
+ * These are defined before static files to prevent hijacking.
  */
-app.get("/", (req, res) => {
-  res.json({ status: "alive", message: "Production Backend" });
+app.get("/ping", (req, res) => res.json({ status: "ok", message: "pong" }));
+
+app.get("/chat-check", (req, res) => {
+  res.json({ status: "Visible at root level", timestamp: new Date().toISOString() });
 });
 
-// THIS IS THE MAIN ENDPOINT NOW
 app.post("/chat", handleChat);
 
-// Debug route to Verify path visibility
-app.get("/chat-check", (req, res) => {
-  res.json({ status: "Chat path is visible and active" });
+// The original root
+app.get("/", (req, res) => {
+  res.json({ status: "alive", note: "Root is active" });
 });
 
 /**
- * 2. BACKWARD COMPAT (Keep /api just in case, but frontend will use root)
+ * 📍 BACKWARD COMPAT (Just in case)
  */
-app.post("/api/chat", handleChat);
-app.get("/api/conversations/:sessionId", getConversationHistory);
-app.get("/api/appointments", getAppointments);
+app.use("/api/chat", handleChat);
+app.get("/api/chat-check", (req, res) => res.json({ status: "API path active" }));
 
 /**
- * 3. STATIC FILES
+ * 📍 STATIC ASSETS
  */
 const publicPath = path.join(__dirname, "..", "public");
 app.use(express.static(publicPath));
 
 /**
- * 4. DB & BOOT
+ * 📍 GLOBAL 404 & ERROR
+ */
+app.use((req, res) => {
+  console.log(`❌ [404] ${req.url}`);
+  res.status(404).json({ error: "Express Route Not Found", url: req.url });
+});
+
+app.use((err, req, res, next) => {
+  console.error("📛 SERVER ERROR:", err.message);
+  res.status(500).json({ error: "Internal Error", detail: err.message });
+});
+
+/**
+ * 📍 BOOT
  */
 const PORT = process.env.PORT || 4000;
-mongoose.connect(process.env.MONGO_URI || "").then(() => {
-  console.log("✅ DB Connected");
-}).catch(err => console.error("❌ DB Error:", err.message));
+mongoose.connect(process.env.MONGO_URI || "")
+  .then(() => console.log("✅ Database Connected"))
+  .catch(err => console.error("❌ Database Error:", err.message));
 
 app.listen(PORT, "0.0.0.0", () => {
-  console.log(`🚀 Server on port ${PORT}`);
+  console.log(`🚀 [READY] Production server listening on port ${PORT}`);
 });
