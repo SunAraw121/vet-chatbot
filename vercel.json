@@ -1,0 +1,16 @@
+{
+    "rewrites": [
+        {
+            "source": "/admin(.*)",
+            "destination": "/index.html"
+        },
+        {
+            "source": "/api/(.*)",
+            "destination": "https://vet-chatbot-backend-uon9.onrender.com/api/$1"
+        },
+        {
+            "source": "/(.*)",
+            "destination": "/index.html"
+        }
+    ]
+}
