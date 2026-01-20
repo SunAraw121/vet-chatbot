@@ -13,26 +13,37 @@ const app = express();
 /* ---------- Middleware ---------- */
 app.use(express.json());
 
-// Standard CORS Configuration
+// 1. Standard CORS Middleware (for GET/POST)
 app.use(cors({
   origin: [
     "https://vet-chatbot.vercel.app",
     "http://localhost:3000",
-    "http://localhost:5173" // Vite default
+    "http://localhost:5173"
   ],
   methods: ["GET", "POST", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization"]
 }));
 
-// � THE MISSING PIECE: Handle Preflight Requests explicitly
-app.options("*", cors());
+// 2. 🔑 HARD STOP for preflight (OPTIONS)
+// This guarantees that OPTIONS requests get headers and a 204 immediately,
+// bypassing any potential interference.
+app.use((req, res, next) => {
+  if (req.method === "OPTIONS") {
+    const origin = req.headers.origin;
+    // Allow explicitly listed origins or fallback to *
+    res.header("Access-Control-Allow-Origin", origin || "*");
+    res.header("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+    res.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
+    return res.sendStatus(204);
+  }
+  next();
+});
 
 /* ---------- Routes ---------- */
 app.get("/", (req, res) => {
   res.json({ status: "OK", service: "vet-chatbot-backend" });
 });
 
-// Restore standard API routings
 app.post("/api/chat", handleChat);
 app.get("/api/conversations/:sessionId", getConversationHistory);
 app.get("/api/appointments", getAppointments);
