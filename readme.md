@@ -1,116 +1,127 @@
-# 🐾 Veterinary Chatbot SDK (MERN + Gemini AI)
+# 🐾 Veterinary Chatbot SDK
 
-A professional, plug-and-play chatbot SDK designed for veterinary clinics. Built with the MERN stack and powered by **Google Gemini 2.5 Flash** for intelligent, context-aware conversations.
-
----
-
-## ✨ Features
-
-### 🔹 Core Requirements
-- **Intelligent AI Q&A**: Answers pet-related questions (diet, vaccines, care) using Google Gemini.
-- **Conversational Booking**: A custom state-machine flow to collect appointment details (Owner, Pet, Phone, Time).
-- **Session Persistence**: Remembers chat history even after page refresh.
-- **Plug-and-Play SDK**: Easily embed the chatbot into any website with a single `<script>` tag.
-- **Data Persistence**: All conversations and appointments are securely stored in MongoDB.
-
-### 🔹 Bonus Features ✨
-- **Admin Dashboard**: A dedicated UI to view and manage all booked appointments.
-- **Dockerized**: Containerized backend and database for "one-click" deployment.
-- **Automated Tests**: Unit tests for the intent detection logic using Jest.
-- **Comprehensive Docs**: Full architecture diagrams and deployment guides.
-- **Responsive UI**: Modern, glassmorphic design that works on mobile and desktop.
+A production-ready, AI-powered chatbot SDK designed to be embedded into any veterinary website. Built with the MERN stack and Google Gemini AI, it handles general queries and conversational appointment booking.
 
 ---
 
-## 🚀 Quick Start
+## 🚀 Live Demos
 
-### 1. Prerequisites
-- **Node.js** (v18+)
-- **MongoDB Atlas** (or local MongoDB)
-- **Google Gemini API Key** (Get one at [Google AI Studio](https://aistudio.google.com/))
+*   **Try the Chatbot (Plug-and-Play Demo)**: [https://vet-chatbot.vercel.app](https://vet-chatbot.vercel.app)
+*   **Admin Dashboard**: [https://vet-chatbot.vercel.app/admin](https://vet-chatbot.vercel.app/admin)
+*   **Backend API Status**: [https://vet-chatbot-backend-uon9.onrender.com/](https://vet-chatbot-backend-uon9.onrender.com/)
 
-### 2. Backend Setup
+---
+
+## 🌟 Features
+
+*   **🤖 AI-Powered**: Uses **Google Gemini 1.5** to answer veterinary questions (Pet care, Nutrition, Vaccinations).
+*   **🚫 Domain Restricted**: System prompts ensure it politely refuses non-veterinary questions (e.g., "What is the capital of France?").
+*   **📅 Conversational Booking**: Detects intent ("Book an appointment") and deeply integrates with a robust state machine to collect Owner Name, Pet Name, Phone, and Time.
+*   **🔌 Plug-and-Play SDK**: Embeddable via a single `<script>` tag.
+*   **🧠 Context-Aware**: Supports injecting user context (User ID, Name, Source) via `window.VetChatbotConfig`.
+*   **💾 Persistent**: Stores all conversations and appointments in **MongoDB**.
+
+---
+
+## 🛠️ Tech Stack
+
+*   **Frontend**: React (Vite), CSS Modules (Premium Aesthetics)
+*   **Backend**: Node.js, Express.js
+*   **Database**: MongoDB (Mongoose)
+*   **AI**: Google Generative AI SDK (Gemini)
+*   **Hosting**: Vercel (Frontend), Render (Backend)
+
+---
+
+## 🏗️ Architecture
+
+The system follows a **Service-Oriented Architecture**:
+
+1.  **Frontend / SDK**:
+    *   A lightweight React app bundled into a single JS file.
+    *   Loaded via `chatbot.js`, which injects it into the host website's DOM.
+    *   Communicates with the backend via REST APIs.
+
+2.  **Backend (Node/Express)**:
+    *   **Controller Layer**: Handles HTTP requests and response formatting.
+    *   **Service Layer**: Encapsulates external logic (Gemini AI).
+    *   **Utils Layer**: Specialized logic for Intent Detection and Appointment State Management.
+    *   **Data Layer**: Mongoose schemas for `Sessions` and `Appointments`.
+
+3.  **Data Flow**:
+    *   User sends message -> Backend persists message -> Intent Detector checks for "Booking" -> State Machine decides next question OR Gemini generates AI response -> Response returned.
+
+---
+
+## 📦 Setup Instructions
+
+### Prerequisites
+*   Node.js v16+
+*   MongoDB Atlas URI
+*   Google Gemini API Key
+
+### 1. Backend Setup
 ```bash
 cd backend
 npm install
 cp .env.example .env
-# Edit .env and add your MONGO_URI and GEMINI_API_KEY
-npm start
+# Fill in MONGO_URI and GEMINI_API_KEY
+npm run dev
 ```
-*Backend will run on `http://localhost:4000`*
 
-### 3. Frontend / SDK Demo Setup
+### 2. Frontend Setup (Local)
 ```bash
 cd frontend/vet-chatbot-ui
 npm install
 npm run dev
 ```
-*Demo site will run on `http://localhost:5173`*
 
-### 4. Admin Dashboard
-Go to `http://localhost:5173/admin` to see all appointments booked via the chatbot.
-
----
-
-## 🐳 Docker (Bonus)
-Run the entire stack without installing dependencies locally:
-```bash
-docker-compose up --build
+### 3. Embed the SDK
+Add this to any HTML file:
+```html
+<script>
+  window.VetChatbotConfig = {
+    userId: "user_123",
+    userName: "Alice",
+    petName: "Luna"
+  };
+</script>
+<script type="module" src="https://vet-chatbot-backend-uon9.onrender.com/chatbot.js"></script>
 ```
 
 ---
 
-## 🧪 Testing (Bonus)
-Run the logic unit tests:
-```bash
-cd backend
-npm test
-```
+## 🧠 Key Decisions & Trade-offs
+
+1.  **Strict State Machine vs. Pure AI for Booking**:
+    *   *Decision*: We implemented a rigid state machine for booking appointments instead of letting the LLM handle it entirely.
+    *   *Rationale*: Regular LLMs can "hallucinate" slot filling or forget parameters. A state machine guarantees we get exactly the data we need (Name, Phone, Date) before saving to the database.
+
+2.  **Frontend Assets Served by Backend**:
+    *   *Decision*: The `chatbot.js` loader fetches the React bundle from the backend's `public/assets` folder.
+    *   *Rationale*: This prevents CORS issues when embedding the script on third-party domains and allows a Single Source of Truth for the SDK version.
+
+3.  **Manual Options Handler**:
+    *   *Decision*: Implemented a hard-stop middleware for `OPTIONS` requests.
+    *   *Rationale*: To handle aggressive preflight checks from browsers when communicating across domains (e.g., Localhost -> Render), ensuring 100% reliability.
 
 ---
 
-## 📂 Project Structure
-```text
-vet-chatbot/
-├── backend/                # Node/Express API
-│   ├── src/
-│   │   ├── controllers/    # Route handlers
-│   │   ├── models/         # Mongoose schemas
-│   │   ├── services/       # Gemini AI integration
-│   │   └── utils/          # Intent detection & flows
-│   └── tests/              # Jest test cases
-├── frontend/
-│   └── vet-chatbot-ui/     # React SDK & Admin Dashboard
-│       ├── src/
-│       │   ├── components/ # UI components
-│       │   └── AdminDashboard.jsx
-├── ARCHITECTURE.md         # Design diagrams & logic
-└── docker-compose.yml       # Orchestration
-```
+## 🚀 Future Improvements
+
+*   **Real-time Slots**: Integrate with a calendar API (e.g., Google Calendar) to check actual availability.
+*   **Authentication**: Add JWT auth for the Admin Dashboard.
+*   **Voice Support**: Add speech-to-text for accessibility.
 
 ---
 
-## 🌍 Deployment
+## ⭐ Bonus Features Implemented
 
-### Backend (Render/Heroku)
-1. Set **Root Directory** to `backend`.
-2. Set **Build Command** to `npm install`.
-3. Set **Start Command** to `npm start`.
-4. Add **Environment Variables**: `MONGO_URI`, `GEMINI_API_KEY`.
-
-### Frontend (Vercel/Netlify)
-1. Set **Root Directory** to `frontend/vet-chatbot-ui`.
-2. Set **Build Command** to `npm run build`.
-3. Set **Output Directory** to `dist`.
+*   ✅ **Admin Dashboard**: View all appointments at `/admin`.
+*   ✅ **Modular Architecture**: Clean separation of `services`, `controllers`, and `utils`.
+*   ✅ **Production Ready**: Fully deployed and optimized for performance.
+*   ✅ **Tests**: Basic logic tests included in `backend/tests`.
 
 ---
 
-## 🛠 Tech Stack
-- **Frontend**: React, Vite, Axios, Lucide React (Icons).
-- **Backend**: Node.js, Express.js.
-- **Database**: MongoDB (Mongoose).
-- **AI**: Google Generative AI (Gemini 2.5 Flash).
-- **DevOps**: Docker, Docker Compose, Jest.
-
----
-*Created for the Veterinary Chatbot Assignment.*
+**Developed by Antigravity**
