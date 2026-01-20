@@ -128,9 +128,10 @@ export async function handleChat(req, res) {
       const draft = session.appointmentDraft || {};
 
       // Basic restart detection at any point
-      if (message.toLowerCase() === "restart") {
+      if (["restart", "cancel", "stop", "no"].includes(message.toLowerCase())) {
         session.appointmentDraft = {};
-        botReply = "Let's start over. What is your name?";
+        session.lastIntent = "GENERAL_QUERY";
+        botReply = "Booking cancelled. How else can I help you today?";
       } else if (intentJustChanged) {
         // If we just switched to booking mode, ask for the first piece of info
         botReply = "Sure! Let's get your appointment set up. What is your name?";
