@@ -32,6 +32,13 @@ app.use(express.static(path.join(process.cwd(), "public")));
 app.use("/api", chatRoutes);
 
 /**
+ * 4️⃣ Root route for health check
+ */
+app.get("/", (req, res) => {
+  res.json({ status: "alive", message: "Veterinary Chatbot Backend is running" });
+});
+
+/**
  * 5️⃣ Database connection
  */
 mongoose
@@ -46,8 +53,8 @@ mongoose
 /**
  * 6️⃣ Start server (LAST)
  */
-const PORT = 4000;
+const PORT = process.env.PORT || 4000;
 
-app.listen(PORT, () => {
+app.listen(PORT, "0.0.0.0", () => {
   console.log(`🚀 Server running on port ${PORT}`);
 });
