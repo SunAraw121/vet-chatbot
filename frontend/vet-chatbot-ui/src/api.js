@@ -1,6 +1,6 @@
 import axios from "axios";
 
-const API_BASE = "https://vet-chatbot-backend-uon9.onrender.com/api";
+const API_BASE = "https://vet-chatbot-backend-uon9.onrender.com";
 
 /**
  * Sends a chat message to backend
