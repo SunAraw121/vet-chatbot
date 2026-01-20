@@ -4,58 +4,63 @@ dotenv.config();
 import express from "express";
 import mongoose from "mongoose";
 
-// Import controller
+// Import controller logic
 import { handleChat } from "./controllers/chat.controller.js";
 
 const app = express();
 
 /**
- * 💥 THE ABSOLUTE FIRST LINE
- * We handle CORS and Logging before ANYTHING else.
+ * 💥 GHOST PROTOCOL CORS
  */
 app.use((req, res, next) => {
-  console.log(`📡 [EXFILTRATION] ${req.method} ${req.url}`);
-
-  // Aggressive CORS
   res.header("Access-Control-Allow-Origin", "*");
   res.header("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
   res.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
-  res.header("X-Debug-Exfiltrated", "TRUE"); // To verify in your console
-
-  if (req.method === "OPTIONS") return res.sendStatus(200);
   next();
 });
 
 app.use(express.json());
 
 /**
- * 🚀 THE BYPASS
- * We map the CHAT logic directly to the ROOT.
- * Render allows '/', so we will use '/' for everything.
+ * 🚀 GHOST PROTOCOL ROUTING (GET BYPASS)
+ * Since POST preflights are being blocked, we use GET for everything.
  */
 
-// If it's a POST to '/', it's a message
-app.post("/", handleChat);
+// 1. Production Chat (GET)
+// This decodes the message from the URL to avoid the Preflight/OPTIONS failure.
+app.get("/chat", async (req, res) => {
+  console.log(`📡 [GHOST-GET] Received data: ${req.query.data}`);
+  try {
+    const rawData = req.query.data;
+    const { sessionId, message, context } = JSON.parse(decodeURIComponent(rawData));
 
-// If it's a GET to '/', it's a health check
+    // Inject into body for the existing controller to work
+    req.body = { sessionId, message, context };
+    return handleChat(req, res);
+  } catch (err) {
+    console.error("📛 Decode Error:", err.message);
+    res.status(400).json({ error: "Invalid data format" });
+  }
+});
+
+// 2. Health Check
 app.get("/", (req, res) => {
   res.json({
-    status: "READY",
-    mode: "Exfiltration-Root-Bypass",
-    note: "Send POST requests to this exact URL for chat"
+    status: "GHOST_PROTOCOL_ACTIVE",
+    note: "Use GET /chat?data=... for communication"
   });
 });
 
-// Backward compatibility (just in case Render starts working normally)
+// Backward compatibility (Keep these just in case)
+app.post("/", handleChat);
 app.post("/chat", handleChat);
-app.post("/api/chat", handleChat);
 
 // Start
 const PORT = process.env.PORT || 4000;
-mongoose.connect(process.env.MONGO_URI || "").then(() => {
-  console.log("✅ Database Connected");
-}).catch(err => console.error("❌ DB Error", err.message));
+mongoose.connect(process.env.MONGO_URI || "")
+  .then(() => console.log("✅ DB Connected"))
+  .catch(err => console.error("❌ DB Error", err.message));
 
 app.listen(PORT, "0.0.0.0", () => {
-  console.log(`🚀 BYPASS SERVER LIVE ON PORT ${PORT}`);
+  console.log(`🚀 [GHOST] Listening on port ${PORT}`);
 });
