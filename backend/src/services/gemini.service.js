@@ -24,16 +24,22 @@ GUIDELINES:
 - Do NOT answer non-veterinary questions (e.g., math, coding, general news). Politely steer the conversation back to pets.
 - If the user wants to book an appointment, let the system handle the booking flow, but you can say "I can help you with that! Just say 'Book Appointment'."`;
 
-  // DIRECT REST API CASCADE (Bypassing SDK)
-  const models = ["gemini-1.5-flash", "gemini-1.5-pro", "gemini-1.0-pro", "gemini-pro"];
+  // DIRECT REST API CASCADE (Bypassing SDK issues)
+  // Structure: [ModelName, API_Version]
+  const strategies = [
+    ["gemini-1.5-flash", "v1beta"],
+    ["gemini-1.5-pro", "v1beta"],
+    ["gemini-1.0-pro", "v1beta"], // Sometimes v1beta
+    ["gemini-pro", "v1beta"],
+    ["gemini-1.5-flash", "v1"],   // Try v1 stable
+    ["gemini-pro", "v1"]          // Try v1 stable for legacy
+  ];
 
   let lastError;
 
-  for (const modelName of models) {
+  for (const [modelName, version] of strategies) {
     try {
-      // Try v1beta as it supports the newest models better (or v1 for pro)
-      // We will try v1beta first as it covers more models
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${key}`;
+      const url = `https://generativelanguage.googleapis.com/${version}/models/${modelName}:generateContent?key=${key}`;
 
       const payload = {
         contents: [
@@ -41,7 +47,7 @@ GUIDELINES:
         ]
       };
 
-      console.log(`📡 Sending REST request to ${modelName}...`);
+      console.log(`📡 Sending REST request to ${modelName} (${version})...`);
       const response = await fetch(url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -50,8 +56,7 @@ GUIDELINES:
 
       if (!response.ok) {
         const errText = await response.text();
-        // If 404, we continue. If 403, we might also continue or fail.
-        throw new Error(`${modelName} Error ${response.status}: ${errText}`);
+        throw new Error(`${modelName} [${version}] Error ${response.status}: ${errText}`);
       }
 
       const data = await response.json();
@@ -61,7 +66,7 @@ GUIDELINES:
       return text; // Success!
 
     } catch (e) {
-      console.warn(`⚠️ REST Model ${modelName} failed:`, e.message);
+      console.warn(`⚠️ REST Model ${modelName} (${version}) failed:`, e.message);
       lastError = e;
     }
   }
@@ -78,8 +83,8 @@ GUIDELINES:
 export async function detectIntentWithAI(message) {
   if (!process.env.GEMINI_API_KEY) return "GENERAL_QUERY";
 
-  // Also switch intent detection to REST for consistency
   const key = process.env.GEMINI_API_KEY;
+  // Use a simpler fallback model for intent detection
   const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${key}`;
 
   const prompt = `Classify into ONE: "BOOK_APPOINTMENT" or "GENERAL_QUERY". 
