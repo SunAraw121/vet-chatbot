@@ -8,6 +8,10 @@ import path from "path";
 import { fileURLToPath } from "url";
 import fs from "fs";
 
+// Verification log for environment variables
+console.log("🛠️  [ENV CHECK] MONGO_URI:", process.env.MONGO_URI ? "PRESET ✅" : "MISSING ❌");
+console.log("🛠️  [ENV CHECK] GEMINI_API_KEY:", process.env.GEMINI_API_KEY ? "PRESET ✅" : "MISSING ❌");
+
 // Import controller logic
 import { handleChat, getConversationHistory, getAppointments } from "./controllers/chat.controller.js";
 
@@ -51,7 +55,16 @@ app.get("/api/appointments", getAppointments);
 
 // Health check
 app.get("/api/health", (req, res) => {
-  res.json({ status: "OK", service: "vet-chatbot-backend", time: new Date() });
+  res.json({
+    status: "OK",
+    service: "vet-chatbot-backend",
+    time: new Date(),
+    db: mongoose.connection.readyState === 1 ? "Connected" : "Disconnected",
+    env: {
+      mongo: !!process.env.MONGO_URI,
+      gemini: !!process.env.GEMINI_API_KEY
+    }
+  });
 });
 
 /* ---------- Static File Serving & SPA Fallback ---------- */

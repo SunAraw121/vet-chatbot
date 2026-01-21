@@ -67,13 +67,13 @@ export default function ChatWindow({ sessionId, context, onClose }) {
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center",
-          background: "#ef4444",
+          background: "#1e293b",
           color: "white",
           borderRadius: "8px 8px 0 0"
         }}
       >
         <strong style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <span>🚑</span> Dr. Paw AI (DEPLOY TEST)
+          <span>🐾</span> Dr. Paw AI
         </strong>
         <button
           onClick={onClose}

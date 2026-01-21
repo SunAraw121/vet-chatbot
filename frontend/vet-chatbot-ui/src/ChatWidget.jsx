@@ -1,6 +1,13 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import ChatWindow from "./ChatWindow";
 
+/**
+ * ChatWidget
+ * -----------
+ * This component is responsible ONLY for:
+ * - Floating button UI
+ * - Open / close state
+ */
 export default function ChatWidget({ sessionId, context }) {
   const [open, setOpen] = useState(false);
 
@@ -16,13 +23,19 @@ export default function ChatWidget({ sessionId, context }) {
               borderRadius: "50%",
               fontSize: "30px",
               cursor: "pointer",
-              background: "#ef4444", /* BRIGHT RED */
+              background: "#ecc94b", /* Gold */
               color: "white",
-              border: "4px solid #facc15",
-              boxShadow: "0 10px 15px -3px rgba(0,0,0,0.1)"
+              border: "none",
+              boxShadow: "0 10px 15px -3px rgba(0,0,0,0.2)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              transition: "transform 0.2s",
             }}
+            onMouseOver={(e) => e.currentTarget.style.transform = "scale(1.1)"}
+            onMouseOut={(e) => e.currentTarget.style.transform = "scale(1)"}
           >
-            🚑
+            🐾
           </button>
         )}
 

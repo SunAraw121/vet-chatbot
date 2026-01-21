@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
+import { getApiBase } from './api';
 
 const AdminDashboard = () => {
     const [appointments, setAppointments] = useState([]);
@@ -12,11 +13,7 @@ const AdminDashboard = () => {
 
     const fetchAppointments = async () => {
         try {
-            const hostname = window.location.hostname;
-            const apiBase = (hostname === "localhost" || hostname === "127.0.0.1")
-                ? "http://localhost:4000/api"
-                : (hostname.includes("onrender.com") ? "/api" : "https://vet-chatbot-backend-uon9.onrender.com/api");
-
+            const apiBase = getApiBase();
             const response = await axios.get(`${apiBase}/appointments`);
             setAppointments(response.data);
         } catch (err) {

@@ -3,23 +3,27 @@ import axios from "axios";
 // Standard production backend URL
 const PROD_URL = "https://vet-chatbot-backend-uon9.onrender.com/api";
 
-const getApiBase = () => {
+export const getApiBase = () => {
   if (typeof window === "undefined") return PROD_URL;
 
-  const { hostname } = window.location;
-  // If running locally, hit the local backend
+  const { hostname, protocol } = window.location;
+
+  // 1. Local Development
   if (hostname === "localhost" || hostname === "127.0.0.1") {
     return "http://localhost:4000/api";
   }
-  // If we are on the backend itself (Render), use relative path
+
+  // 2. Same-origin (Running on Render backend directly)
   if (hostname.includes("onrender.com")) {
     return "/api";
   }
-  // Default to production URL (for Vercel or other domains)
+
+  // 3. Cross-origin (Vercel) - Must use absolute URL
   return PROD_URL;
 };
 
-const API_BASE = getApiBase();
+export const API_BASE = getApiBase();
+console.log(`🔌 Initialized API_BASE: ${API_BASE}`);
 
 /**
  * Sends a chat message to backend
