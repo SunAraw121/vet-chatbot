@@ -1,12 +1,17 @@
 {
+    "version": 2,
     "rewrites": [
         {
-            "source": "/admin(.*)",
+            "source": "/api/(.*)",
+            "destination": "https://vet-chatbot-backend.onrender.com/api/$1"
+        },
+        {
+            "source": "/admin",
             "destination": "/index.html"
         },
         {
             "source": "/(.*)",
-            "destination": "/index.html"
+            "destination": "/$1"
         }
     ]
 }

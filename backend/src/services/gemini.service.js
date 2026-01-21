@@ -35,8 +35,8 @@ GUIDELINES:
     const response = await result.response;
     return response.text();
   } catch (error) {
-    console.error("❌ Gemini API Service Error:", error.message || error);
-    return `Dr. Paw is a bit overwhelmed (Error: ${error.message || 'Unknown'}). Please try again in a moment!`;
+    console.error("❌ Gemini AI Error:", error.message || error);
+    return `Dr. Paw is resting (Error: ${error.message?.substring(0, 50)}...). Please try again!`;
   }
 }
 
@@ -62,7 +62,7 @@ export async function detectIntentWithAI(message) {
     if (text.includes("BOOK_APPOINTMENT")) return "BOOK_APPOINTMENT";
     return "GENERAL_QUERY";
   } catch (error) {
-    console.error("❌ Intent Detection Error:", error);
+    console.error("❌ Intent AI Error:", error.message || error);
     // Fallback to basic keywords
     const lower = message.toLowerCase();
     if (lower.includes("book") || lower.includes("appointment") || lower.includes("schedule")) {
