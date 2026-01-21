@@ -86,8 +86,14 @@ The following is the conversation history. Use it to maintain continuity.
 
   // If we get here, all failed
   console.error("❌ All REST models failed.");
-  const fullMessage = lastError?.message || "Unknown error";
-  return `Dr. Paw Error Diagnostic: All models failed. Last error: ${fullMessage}`;
+
+  // Check if it was a quota issue (common with free tier)
+  if (lastError?.message?.includes("429") || lastError?.message?.includes("Quota")) {
+    return "Dr. Paw is currently experiencing very high traffic (AI Quota Exceeded). However, I can still help you book an appointment! Just say **'Book an appointment'**.";
+  }
+
+  // Generic fallback
+  return "Dr. Paw is having trouble connecting to the brain. Please try again later, or say **'Book an appointment'** to schedule a visit directly.";
 }
 
 /**
