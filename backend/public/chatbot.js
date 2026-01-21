@@ -20,7 +20,7 @@
   document.body.appendChild(root);
 
   // 4. Load the React bundle (Production URL) with Cache Buster
-  const BASE_URL = 'https://vet-chatbot-backend-uon9.onrender.com';
+  const BASE_URL = 'https://vet-chatbot-backend.onrender.com';
   const VERSION = Date.now(); // Ensure we always load the latest build
 
   const script = document.createElement('script');

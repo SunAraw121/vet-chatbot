@@ -14,14 +14,8 @@ function App() {
           <Route path="/admin" element={<AdminDashboard />} />
           <Route path="/" element={
             <div style={{ padding: '0', textAlign: 'center', minHeight: '100vh', display: 'flex', flexDirection: 'column', background: '#f8fafc' }}>
-              <nav style={{ padding: '20px', background: '#1e293b', color: '#facc15', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <nav style={{ padding: '20px', background: '#1e293b', color: '#facc15', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
                 <span style={{ fontWeight: '800', fontSize: '1.5rem' }}>🐾 Dr. Paw AI</span>
-                <button
-                  onClick={() => window.location.href = '/admin'}
-                  style={{ background: '#facc15', color: '#1e293b', border: 'none', padding: '8px 16px', borderRadius: '6px', cursor: 'pointer', fontWeight: '700' }}
-                >
-                  Admin Panel
-                </button>
               </nav>
 
               <main style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', padding: '40px' }}>

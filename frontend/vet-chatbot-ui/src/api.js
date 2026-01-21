@@ -1,7 +1,7 @@
 import axios from "axios";
 
 // Standard production backend URL
-const PROD_URL = "https://vet-chatbot-backend-uon9.onrender.com/api";
+const PROD_URL = "https://vet-chatbot-backend.onrender.com/api";
 
 export const getApiBase = () => {
   if (typeof window === "undefined") return PROD_URL;
