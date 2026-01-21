@@ -27,45 +27,42 @@ export async function handleChat(req, res) {
       });
     }
 
-    // 2. Global Reset Logic (Force clear stuck states)
-    if (["reset", "clear", "restart", "start over"].includes(message.toLowerCase())) {
+    // 2. Global Reset Logic
+    if (["reset", "clear", "restart", "cancel"].includes(message.toLowerCase())) {
       session.appointmentDraft = {};
       session.lastIntent = "GENERAL_QUERY";
-      session.messages = [];
+      console.log(`🧹 Session ${sessionId} reset by user.`);
       await session.save();
-      return res.json({ reply: "Session reset! I'm ready for your questions. How can I help you and your pet today?", sessionId });
+      return res.json({ reply: "I've reset our conversation. I am Dr. Paw, your AI Vet assistant. How can I help you today?", sessionId });
     }
 
     // 3. Persist user message
     session.messages.push({ role: "user", content: message });
 
+    // 4. SMART Intent Detection
+    // We check every message to see if it's a medical question or a booking request
+    const aiIntent = await detectIntentWithAI(message);
+    console.log(`🤖 AI Detected Intent: ${aiIntent}`);
+
     let botReply = "";
 
-    // 4. SMART Intent Detection
-    // We check intent EVERY TIME if we haven't finished the booking, 
-    // to allow users to switch back to medical questions.
-    const intent = await detectIntentWithAI(message);
+    /* --------------------------------------------------
+     * 5️⃣ Handle Intent & Response
+     * -------------------------------------------------- */
 
-    // 5. Handle Booking Flow
-    if (intent === "BOOK_APPOINTMENT" || session.lastIntent === "BOOK_APPOINTMENT") {
+    // IF AI says it's a general query (greeting, medical question, etc.)
+    // OR if the user is answering "no" to a booking confirmation
+    if (aiIntent === "GENERAL_QUERY" || message.toLowerCase() === "no") {
+      session.lastIntent = "GENERAL_QUERY";
+      session.appointmentDraft = {}; // Clear draft if they switch to general query
+      botReply = await getVetAIResponse(message, session.messages);
+    }
+    // IF user wants to book OR they were already in the middle of a booking
+    else if (aiIntent === "BOOK_APPOINTMENT" || session.lastIntent === "BOOK_APPOINTMENT") {
       const draft = session.appointmentDraft || {};
 
-      // If they were in booking but asked something else (and the AI detected GENERAL_QUERY),
-      // we should respect that and switch back.
-      if (intent === "GENERAL_QUERY" && session.lastIntent === "BOOK_APPOINTMENT") {
-        // Only switch back if they aren't answering a specific question
-        // But for safety, let's just let AI take over
-        session.lastIntent = "GENERAL_QUERY";
-        botReply = await getVetAIResponse(message, session.messages);
-      }
-      // Handle cancellation
-      else if (["cancel", "stop", "exit", "no"].includes(message.toLowerCase())) {
-        session.appointmentDraft = {};
-        session.lastIntent = "GENERAL_QUERY";
-        botReply = "Booking cancelled. What else can I help you with?";
-      }
-      // Handle confirmation
-      else if (draft.datetime && message.toLowerCase() === "yes") {
+      // Handle Confirmation
+      if (draft.datetime && message.toLowerCase() === "yes") {
         await Appointment.create({
           sessionId,
           ownerName: draft.ownerName,
@@ -75,13 +72,12 @@ export async function handleChat(req, res) {
         });
         session.appointmentDraft = {};
         session.lastIntent = "GENERAL_QUERY";
-        botReply = "✅ Your appointment is booked! I've sent the details to our team. Do you have any pet health questions for me?";
+        botReply = "✅ Your appointment is booked! You'll receive a confirmation soon. Do you have any other questions for Dr. Paw?";
       }
-      // Filling Slots
       else {
         session.lastIntent = "BOOK_APPOINTMENT";
 
-        // Very basic slot filler - just takes whatever they sent next
+        // Fill slots: name -> pet -> phone -> time
         if (!draft.ownerName) draft.ownerName = message;
         else if (!draft.petName) draft.petName = message;
         else if (!draft.phone) draft.phone = message;
@@ -93,25 +89,20 @@ export async function handleChat(req, res) {
         if (nextQuestion) {
           botReply = nextQuestion;
         } else {
-          botReply = `Got it! Please confirm:\n- **Owner**: ${draft.ownerName}\n- **Pet**: ${draft.petName}\n- **Phone**: ${draft.phone}\n- **Time**: ${draft.datetime}\n\nType **YES** to confirm or **CANCEL** to start over.`;
+          botReply = `Got it! Please confirm these details:\n- **Owner**: ${draft.ownerName}\n- **Pet**: ${draft.petName}\n- **Phone**: ${draft.phone}\n- **Time**: ${draft.datetime}\n\nType **YES** to confirm or **CANCEL** to start over.`;
         }
       }
     }
-    // 6. Handle General Medical/Pet Care Query
-    else {
-      session.lastIntent = "GENERAL_QUERY";
-      botReply = await getVetAIResponse(message, session.messages);
-    }
 
-    // 7. Persist and Respond
+    // 6. Final Persist & Respond
     session.messages.push({ role: "bot", content: botReply });
     session.updatedAt = new Date();
     await session.save();
 
     return res.json({ reply: botReply, sessionId });
   } catch (error) {
-    console.error("Critical Chat Handler Error:", error);
-    return res.status(500).json({ error: "Sorry, I had a momentary brain freeze. Could you try that again?" });
+    console.error("❌ Chat Controller Error:", error);
+    return res.status(500).json({ error: "Dr. Paw is a bit overwhelmed. Please try again in a moment!" });
   }
 }
 

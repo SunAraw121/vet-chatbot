@@ -16,20 +16,20 @@
 
   // 3. Create root element for React
   const root = document.createElement('div');
-  root.id = 'root'; // Vite's default root id
+  root.id = 'root';
   document.body.appendChild(root);
 
-  // 4. Load the React bundle
-  // In a real production environment, this would point to a CDN or your hosted JS file.
-  // For local development, we point it to the backend's static file server.
+  // 4. Load the React bundle (Production URL)
+  // We use the absolute Render URL to ensure it works when embedded in external sites
+  const BASE_URL = 'https://vet-chatbot-backend-uon9.onrender.com';
+
   const script = document.createElement('script');
   script.type = 'module';
-  script.src = 'https://vet-chatbot-backend-uon9.onrender.com/assets/index.js'; // This will be the built bundle
+  script.src = `${BASE_URL}/assets/index.js`;
 
-  // Also load the styles
   const link = document.createElement('link');
   link.rel = 'stylesheet';
-  link.href = 'https://vet-chatbot-backend-uon9.onrender.com/assets/index.css';
+  link.href = `${BASE_URL}/assets/index.css`;
 
   document.head.appendChild(link);
   document.head.appendChild(script);

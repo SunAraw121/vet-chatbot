@@ -6,6 +6,7 @@ import mongoose from "mongoose";
 import cors from "cors";
 import path from "path";
 import { fileURLToPath } from "url";
+import fs from "fs";
 
 // Import controller logic
 import { handleChat, getConversationHistory, getAppointments } from "./controllers/chat.controller.js";
@@ -17,23 +18,17 @@ const app = express();
 
 app.use(express.json());
 
-// 1. Standard CORS Middleware
+// 1. Precise CORS Configuration
 app.use(cors({
-  origin: [
-    "https://vet-chatbot.vercel.app",
-    "https://vet-chatbot-server.vercel.app",
-    "http://localhost:3000",
-    "http://localhost:5173"
-  ],
+  origin: true, // Allow all origins during final debug to ensure connectivity
   methods: ["GET", "POST", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization"]
 }));
 
-// 2. Preflight Handlers
+// 2. Hard Stop for OPTIONS (Preflight)
 app.use((req, res, next) => {
   if (req.method === "OPTIONS") {
-    const origin = req.headers.origin;
-    res.header("Access-Control-Allow-Origin", origin || "*");
+    res.header("Access-Control-Allow-Origin", req.headers.origin || "*");
     res.header("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
     res.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
     return res.sendStatus(204);
@@ -41,26 +36,52 @@ app.use((req, res, next) => {
   next();
 });
 
-// 3. Serve Static Files from public folder (IMPORTANT for Render/Local Demo)
-app.use(express.static(path.join(__dirname, "../public")));
+// 3. API Routes first to avoid static file interference
+app.post("/api/chat", (req, res, next) => {
+  console.log(`📩 Received Chat Request: ${req.body?.message?.substring(0, 50)}`);
+  next();
+}, handleChat);
 
-/* ---------- API Routes ---------- */
-app.post("/api/chat", handleChat);
 app.get("/api/conversations/:sessionId", getConversationHistory);
 app.get("/api/appointments", getAppointments);
 
-// Health check specifically on /api/health to avoid root conflict
+// Health check
 app.get("/api/health", (req, res) => {
-  res.json({ status: "OK", service: "vet-chatbot-backend" });
+  res.json({ status: "OK", service: "vet-chatbot-backend", time: new Date() });
 });
 
-/* ---------- SPA Routing ---------- */
-// This ensures that refreshing on /admin (or any other route) serves the React App
-app.get("*", (req, res) => {
-  if (req.path.startsWith("/api/")) {
-    return res.status(404).json({ error: "API route not found" });
+/* ---------- Static File Serving & SPA Fallback ---------- */
+
+// Robust detection of public path
+const possiblePaths = [
+  path.join(__dirname, "../public"),
+  path.join(process.cwd(), "public"),
+  path.join(process.cwd(), "backend/public")
+];
+
+let publicPath = possiblePaths[0];
+for (const p of possiblePaths) {
+  if (fs.existsSync(path.join(p, "index.html"))) {
+    publicPath = p;
+    break;
   }
-  res.sendFile(path.resolve(__dirname, "../public/index.html"));
+}
+
+console.log(`🏠 Calculated Public Path: ${publicPath}`);
+app.use(express.static(publicPath));
+
+app.get("*", (req, res) => {
+  // If request is for an API route that wasn't caught, return 404
+  if (req.path.startsWith("/api/")) {
+    return res.status(404).json({ error: "API endpoint not found" });
+  }
+
+  const indexPath = path.join(publicPath, "index.html");
+  if (fs.existsSync(indexPath)) {
+    res.sendFile(indexPath);
+  } else {
+    res.status(404).send("Frontend build not found. Please run build script.");
+  }
 });
 
 /* ---------- Start Server ---------- */
@@ -72,5 +93,4 @@ mongoose.connect(process.env.MONGO_URI || "")
 
 app.listen(PORT, "0.0.0.0", () => {
   console.log(`🚀 Server running on port ${PORT}`);
-  console.log(`🏠 Static files served from: ${path.join(__dirname, "../public")}`);
 });
