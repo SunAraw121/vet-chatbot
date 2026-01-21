@@ -30,7 +30,7 @@ GUIDELINES:
 
   // DIRECT REST API FALLBACK (Bypassing SDK issues)
   try {
-    const modelName = "gemini-1.5-flash";
+    const modelName = "gemini-pro";
     const apiKey = process.env.GEMINI_API_KEY;
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
 
