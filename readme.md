@@ -124,4 +124,3 @@ Add this to any HTML file:
 
 ---
 
-**Developed by Antigravity**
