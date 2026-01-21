@@ -20,7 +20,7 @@ GUIDELINES:
 
   try {
     const model = genAI.getGenerativeModel({
-      model: "gemini-1.5-flash",
+      model: "gemini-1.5-flash-latest",
       systemInstruction: { parts: [{ text: systemPrompt }] }
     });
 
@@ -36,7 +36,8 @@ GUIDELINES:
     return response.text();
   } catch (error) {
     console.error("❌ Gemini AI Error:", error.message || error);
-    return `Dr. Paw is resting (Error: ${error.message?.substring(0, 50)}...). Please try again!`;
+    const errText = (error.message || "Unknown").substring(0, 50);
+    return `Dr. Paw is resting (Error: ${errText}...). Please try again!`;
   }
 }
 
@@ -54,7 +55,7 @@ export async function detectIntentWithAI(message) {
   Category:`;
 
   try {
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-latest" });
     const result = await model.generateContent(prompt);
     const response = await result.response;
     const text = response.text().trim().toUpperCase();
