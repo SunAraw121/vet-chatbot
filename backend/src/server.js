@@ -24,6 +24,15 @@ console.log("-----------------------------------------");
 
 const app = express();
 
+// A. TOP-LEVEL DIAGNOSTIC (Before any middleware)
+app.get("/", (req, res) => {
+  res.json({ message: "🐾 Dr. Paw API is LIVE", version: "2.0.FINAL", time: new Date() });
+});
+
+app.get("/health", (req, res) => {
+  res.json({ status: "OK", source: "absolute-root" });
+});
+
 app.use(express.json());
 
 // 1. Precise CORS Configuration
