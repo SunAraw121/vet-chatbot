@@ -19,20 +19,20 @@
   root.id = 'root';
   document.body.appendChild(root);
 
-  // 4. Load the React bundle (Production URL)
-  // We use the absolute Render URL to ensure it works when embedded in external sites
+  // 4. Load the React bundle (Production URL) with Cache Buster
   const BASE_URL = 'https://vet-chatbot-backend-uon9.onrender.com';
+  const VERSION = Date.now(); // Ensure we always load the latest build
 
   const script = document.createElement('script');
   script.type = 'module';
-  script.src = `${BASE_URL}/assets/index.js`;
+  script.src = `${BASE_URL}/assets/index.js?v=${VERSION}`;
 
   const link = document.createElement('link');
   link.rel = 'stylesheet';
-  link.href = `${BASE_URL}/assets/index.css`;
+  link.href = `${BASE_URL}/assets/index.css?v=${VERSION}`;
 
   document.head.appendChild(link);
   document.head.appendChild(script);
 
-  console.log('✅ Vet Chatbot SDK Loaded');
+  console.log('✅ Dr. Paw AI SDK Loaded (v' + VERSION + ')');
 })();

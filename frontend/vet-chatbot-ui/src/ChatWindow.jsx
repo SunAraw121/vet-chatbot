@@ -62,14 +62,25 @@ export default function ChatWindow({ sessionId, context, onClose }) {
     >
       <div
         style={{
-          padding: "10px",
+          padding: "15px",
           borderBottom: "1px solid #ddd",
           display: "flex",
-          justifyContent: "space-between"
+          justifyContent: "space-between",
+          alignItems: "center",
+          background: "#1e293b",
+          color: "white",
+          borderRadius: "8px 8px 0 0"
         }}
       >
-        <strong>Vet Assistant</strong>
-        <button onClick={onClose}>✕</button>
+        <strong style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <span>🐾</span> Dr. Paw AI
+        </strong>
+        <button
+          onClick={onClose}
+          style={{ background: 'transparent', border: 'none', color: 'white', fontSize: '20px', cursor: 'pointer' }}
+        >
+          ✕
+        </button>
       </div>
 
       <MessageList messages={messages} />
