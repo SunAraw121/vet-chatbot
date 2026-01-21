@@ -29,19 +29,11 @@ GUIDELINES:
 - If the user wants to book an appointment, let the system handle the booking flow, but you can say "I can help you with that! Just say 'Book Appointment'."`;
 
   try {
-    let model;
-    try {
-      model = genAI.getGenerativeModel({
-        model: "gemini-1.5-flash",
-        systemInstruction: { parts: [{ text: systemPrompt }] }
-      });
-    } catch (e) {
-      console.warn("⚠️ Fallback to gemini-pro");
-      model = genAI.getGenerativeModel({
-        model: "gemini-pro",
-        systemInstruction: { parts: [{ text: systemPrompt }] }
-      });
-    }
+    // STABLE: Use gemini-pro directly to ensure 100% availability
+    const model = genAI.getGenerativeModel({
+      model: "gemini-pro",
+      systemInstruction: { parts: [{ text: systemPrompt }] }
+    });
 
     const chat = model.startChat({
       history: (conversationHistory || []).map(msg => ({
