@@ -14,6 +14,10 @@ import { handleChat, getConversationHistory, getAppointments } from "./controlle
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+console.log("-----------------------------------------");
+console.log("🚀 DR PAW BACKEND (v2.0.FINAL) STARTING...");
+console.log("-----------------------------------------");
+
 const app = express();
 
 app.use(express.json());
@@ -54,9 +58,9 @@ app.get("/api/health", (req, res) => {
 
 // Robust detection of public path
 const possiblePaths = [
-  path.join(__dirname, "../public"),
-  path.join(process.cwd(), "public"),
-  path.join(process.cwd(), "backend/public")
+  path.resolve(process.cwd(), "public"),
+  path.resolve(process.cwd(), "backend/public"),
+  path.resolve(__dirname, "../public")
 ];
 
 let publicPath = possiblePaths[0];
