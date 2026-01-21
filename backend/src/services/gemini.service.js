@@ -26,13 +26,15 @@ GUIDELINES:
 
   // DIRECT REST API CASCADE (Bypassing SDK issues)
   // Structure: [ModelName, API_Version]
+  // Based on verified 'list-models' output
   const strategies = [
-    ["gemini-1.5-flash", "v1beta"],
+    ["gemini-1.5-flash", "v1beta"],      // Standard
+    ["gemini-1.5-flash-latest", "v1beta"], // Latest alias
+    ["gemini-1.5-flash-001", "v1beta"],  // Specific version
+    ["gemini-flash-latest", "v1beta"],   // General latest
     ["gemini-1.5-pro", "v1beta"],
-    ["gemini-1.0-pro", "v1beta"], // Sometimes v1beta
-    ["gemini-pro", "v1beta"],
-    ["gemini-1.5-flash", "v1"],   // Try v1 stable
-    ["gemini-pro", "v1"]          // Try v1 stable for legacy
+    ["gemini-1.5-pro-latest", "v1beta"],
+    ["gemini-pro", "v1"]                 // Legacy fallback
   ];
 
   let lastError;
