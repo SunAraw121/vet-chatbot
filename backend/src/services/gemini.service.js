@@ -28,43 +28,40 @@ GUIDELINES:
 - Do NOT answer non-veterinary questions (e.g., math, coding, general news). Politely steer the conversation back to pets.
 - If the user wants to book an appointment, let the system handle the booking flow, but you can say "I can help you with that! Just say 'Book Appointment'."`;
 
+  // DIRECT REST API FALLBACK (Bypassing SDK issues)
   try {
-    // ROBUST MODEL CASCADE: Try known models in order until one works
-    const modelsToTry = ["gemini-1.5-flash", "gemini-pro", "gemini-1.0-pro", "gemini-1.5-pro-latest"];
+    const modelName = "gemini-1.5-flash";
+    const apiKey = process.env.GEMINI_API_KEY;
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
 
-    let lastError;
-    for (const modelName of modelsToTry) {
-      try {
-        console.log(`🔄 Attempting model: ${modelName}`);
-        const model = genAI.getGenerativeModel({
-          model: modelName,
-          systemInstruction: { parts: [{ text: systemPrompt }] }
-        });
+    const payload = {
+      contents: [
+        { role: "user", parts: [{ text: systemPrompt + "\n\nUser: " + userMessage }] }
+      ]
+    };
 
-        const chat = model.startChat({
-          history: (conversationHistory || []).map(msg => ({
-            role: msg.role === "user" ? "user" : "model",
-            parts: [{ text: msg.content }]
-          }))
-        });
+    console.log(`📡 Sending REST request to ${modelName}...`);
+    const response = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
 
-        const result = await chat.sendMessage(userMessage);
-        const response = await result.response;
-        return response.text(); // If successful, return immediately
-      } catch (e) {
-        console.warn(`⚠️ Model ${modelName} failed:`, e.message);
-        lastError = e;
-        // Continue to next model
-      }
+    if (!response.ok) {
+      const errText = await response.text();
+      throw new Error(`REST Error ${response.status}: ${errText}`);
     }
 
-    // If all failed
-    throw lastError;
+    const data = await response.json();
+    const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+
+    if (!text) throw new Error("No text returned from Gemini REST API");
+    return text;
 
   } catch (error) {
-    console.error("❌ Gemini AI Error Raw:", error);
+    console.error("❌ Gemini API Error Raw:", error);
     const fullMessage = error.message || JSON.stringify(error);
-    return `Dr. Paw Error Diagnostic: All models failed. Last error: ${fullMessage}`;
+    return `Dr. Paw Error Diagnostic: ${fullMessage}`;
   }
 }
 
