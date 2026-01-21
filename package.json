@@ -1,0 +1,8 @@
+{
+    "name": "vet-chatbot-root",
+    "private": true,
+    "scripts": {
+        "build": "cd frontend/vet-chatbot-ui && npm install && npm run build",
+        "install": "npm install --prefix backend && npm install --prefix frontend/vet-chatbot-ui"
+    }
+}
