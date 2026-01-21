@@ -45,11 +45,9 @@ GUIDELINES:
     const response = await result.response;
     return response.text();
   } catch (error) {
-    console.error("❌ Gemini AI Error:", error.message || error);
-    if (error.message?.includes("403")) {
-      return "Dr. Paw is resting (Error: API Key Restricted or Invalid). Please check your Google Cloud Console.";
-    }
-    return `Dr. Paw is resting (Error: ${error.message?.substring(0, 50)}...). Try again!`;
+    console.error("❌ Gemini AI Error Raw:", error);
+    const fullMessage = error.message || JSON.stringify(error);
+    return `Dr. Paw Error Diagnostic: ${fullMessage}`;
   }
 }
 
