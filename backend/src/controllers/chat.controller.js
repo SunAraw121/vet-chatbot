@@ -39,59 +39,91 @@ export async function handleChat(req, res) {
     // 3. Persist user message
     session.messages.push({ role: "user", content: message });
 
-    // 4. SMART Intent Detection
-    // We check every message to see if it's a medical question or a booking request
-    const aiIntent = await detectIntentWithAI(message);
-    console.log(`🤖 AI Detected Intent: ${aiIntent}`);
-
     let botReply = "";
+    let aiIntent = null;
+
+    /* --------------------------------------------------
+     * 4️⃣ OPTIMIZED Intent Detection
+     * -------------------------------------------------- */
+
+    // If ALREADY in booking flow, skip AI detection (saves quota)
+    if (session.lastIntent === "BOOK_APPOINTMENT") {
+      console.log("⚡ Skipping AI detection - already in booking flow");
+      aiIntent = "BOOK_APPOINTMENT"; // Force booking flow continuation
+    } else {
+      // Only detect intent if NOT in booking flow
+      aiIntent = await detectIntentWithAI(message);
+      console.log(`🤖 AI Detected Intent: ${aiIntent}`);
+    }
 
     /* --------------------------------------------------
      * 5️⃣ Handle Intent & Response
      * -------------------------------------------------- */
 
-    // IF AI says it's a general query (greeting, medical question, etc.)
-    // OR if the user is answering "no" to a booking confirmation
-    if (aiIntent === "GENERAL_QUERY" || message.toLowerCase() === "no") {
-      session.lastIntent = "GENERAL_QUERY";
-      session.appointmentDraft = {}; // Clear draft if they switch to general query
-      botReply = await getVetAIResponse(message, session.messages);
-    }
-    // IF user wants to book OR they were already in the middle of a booking
-    else if (aiIntent === "BOOK_APPOINTMENT" || session.lastIntent === "BOOK_APPOINTMENT") {
-      const draft = session.appointmentDraft || {};
+    // CASE A: User is in booking flow OR wants to start one
+    if (aiIntent === "BOOK_APPOINTMENT" || session.lastIntent === "BOOK_APPOINTMENT") {
 
-      // Handle Confirmation
-      if (draft.datetime && message.toLowerCase() === "yes") {
-        await Appointment.create({
-          sessionId,
-          ownerName: draft.ownerName,
-          petName: draft.petName,
-          phone: draft.phone,
-          datetime: draft.datetime
-        });
-        session.appointmentDraft = {};
-        session.lastIntent = "GENERAL_QUERY";
-        botReply = "✅ Your appointment is booked! You'll receive a confirmation soon. Do you have any other questions for Dr. Paw?";
-      }
-      else {
+      // SUB-CASE 1: Starting a FRESH booking flow
+      if (session.lastIntent !== "BOOK_APPOINTMENT") {
         session.lastIntent = "BOOK_APPOINTMENT";
+        session.appointmentDraft = {};
+        botReply = "I can help you schedule an appointment. First, what is your name?";
+      }
 
-        // Fill slots: name -> pet -> phone -> time
-        if (!draft.ownerName) draft.ownerName = message;
-        else if (!draft.petName) draft.petName = message;
-        else if (!draft.phone) draft.phone = message;
-        else if (!draft.datetime) draft.datetime = message;
+      // SUB-CASE 2: Already in booking flow - handle slot filling
+      else {
+        const draft = session.appointmentDraft || {};
 
-        session.appointmentDraft = draft;
-        const nextQuestion = getNextAppointmentQuestion(draft);
+        // Handle explicit cancellation
+        if (["cancel", "reset", "restart"].includes(message.toLowerCase())) {
+          session.appointmentDraft = {};
+          session.lastIntent = "GENERAL_QUERY";
+          botReply = "Appointment booking cancelled. How else can I help you?";
+        }
+        // Handle Confirmation (all slots filled)
+        else if (draft.datetime && message.toLowerCase() === "yes") {
+          await Appointment.create({
+            sessionId,
+            ownerName: draft.ownerName,
+            petName: draft.petName,
+            phone: draft.phone,
+            datetime: draft.datetime
+          });
+          session.appointmentDraft = {};
+          session.lastIntent = "GENERAL_QUERY";
+          botReply = "✅ Your appointment is booked! You'll receive a confirmation soon. Do you have any other questions for Dr. Paw?";
+        }
+        else if (draft.datetime && message.toLowerCase() === "no") {
+          session.appointmentDraft = {};
+          session.lastIntent = "GENERAL_QUERY";
+          botReply = "Appointment booking cancelled. How else can I help you?";
+        }
+        // Fill slots progressively
+        else {
+          session.lastIntent = "BOOK_APPOINTMENT";
 
-        if (nextQuestion) {
-          botReply = nextQuestion;
-        } else {
-          botReply = `Got it! Please confirm these details:\n- **Owner**: ${draft.ownerName}\n- **Pet**: ${draft.petName}\n- **Phone**: ${draft.phone}\n- **Time**: ${draft.datetime}\n\nType **YES** to confirm or **CANCEL** to start over.`;
+          // Fill slots: name -> pet -> phone -> time
+          if (!draft.ownerName) draft.ownerName = message;
+          else if (!draft.petName) draft.petName = message;
+          else if (!draft.phone) draft.phone = message;
+          else if (!draft.datetime) draft.datetime = message;
+
+          session.appointmentDraft = draft;
+          const nextQuestion = getNextAppointmentQuestion(draft);
+
+          if (nextQuestion) {
+            botReply = nextQuestion;
+          } else {
+            botReply = `Got it! Please confirm these details:\n- **Owner**: ${draft.ownerName}\n- **Pet**: ${draft.petName}\n- **Phone**: ${draft.phone}\n- **Time**: ${draft.datetime}\n\nType **YES** to confirm or **CANCEL** to start over.`;
+          }
         }
       }
+    }
+    // CASE B: General query - use AI
+    else {
+      session.lastIntent = "GENERAL_QUERY";
+      session.appointmentDraft = {};
+      botReply = await getVetAIResponse(message, session.messages);
     }
 
     // 6. Final Persist & Respond

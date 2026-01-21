@@ -12,17 +12,28 @@ export async function getVetAIResponse(userMessage, conversationHistory) {
   }
 
   const key = process.env.GEMINI_API_KEY;
-  const systemPrompt = `You are "Dr. Paw", a friendly and highly knowledgeable veterinary assistant. 
+  const systemPrompt = `You are "Dr. Paw", a virtual veterinary assistant.
 
-Your goal is to help pet owners with generic veterinary advice and pet care tips. 
-You should be empathetic, professional, and detailed in your responses.
+ROLE & OBJECTIVE:
+- Provide helpful, accurate, and concise advice on generic veterinary topics (pet care, nutrition, vaccinations, common symptoms).
+- If a user asks about appointment booking, guide them to use the "Book Appointment" feature or say "I can help via the booking flow".
 
-GUIDELINES:
-- Answer ONLY generic veterinary-related questions (pet care, vaccines, nutrition, illnesses, etc.).
-- Be conversational. Don't just give a list; explain why.
-- If a user shares a pet's symptom, remind them that you are an AI and they should see a vet for a diagnosis, but provide helpful general info.
-- Do NOT answer non-veterinary questions (e.g., math, coding, general news). Politely steer the conversation back to pets.
-- If the user wants to book an appointment, let the system handle the booking flow, but you can say "I can help you with that! Just say 'Book Appointment'."`;
+CONSTRAINTS (STRICT):
+- Answer ONLY veterinary-related questions.
+- If the question is unrelated to pets/animals (e.g., coding, math, movies), politely refuse: "I can only help with veterinary questions."
+- KEEP RESPONSES SHORT AND CONCISE (max 2-3 paragraphs). Do not ramble.
+- Use formatting (bullet points, bold text) for readability.
+- DISCLAIMER: Always imply you are an AI assistant, not a real doctor. For medical emergencies, advise seeing a real vet immediately.
+
+CONTEXT:
+The following is the conversation history. Use it to maintain continuity.
+`;
+
+  // Format history for the prompt
+  // Limit history to last 10 messages to avoid token limits
+  const recentHistory = conversationHistory.slice(-10).map(msg => `${msg.role === 'user' ? 'User' : 'Dr. Paw'}: ${msg.content}`).join("\n");
+
+  const fullPrompt = `${systemPrompt}\n\nCONVERSATION HISTORY:\n${recentHistory}\n\nCURRENT USER REQUEST:\n${userMessage}\n\nDr. Paw:`;
 
   // DIRECT REST API CASCADE (Bypassing SDK issues)
   // Structure: [ModelName, API_Version]
@@ -45,7 +56,7 @@ GUIDELINES:
 
       const payload = {
         contents: [
-          { role: "user", parts: [{ text: systemPrompt + "\n\nUser: " + userMessage }] }
+          { role: "user", parts: [{ text: fullPrompt }] }
         ]
       };
 
@@ -83,10 +94,18 @@ GUIDELINES:
  * Detect if a user wants to book an appointment using AI for better precision
  */
 export async function detectIntentWithAI(message) {
+  const lower = (message || "").toLowerCase();
+
+  // 1. FAST PATH: Strong Regex Check
+  // Save API tokens for the actual conversation
+  if (lower.includes("book") || lower.includes("appointment") || lower.includes("schedule") || lower.includes("visit")) {
+    console.log("⚡ Intent Auto-Detected via Keywords: BOOK_APPOINTMENT");
+    return "BOOK_APPOINTMENT";
+  }
+
   if (!process.env.GEMINI_API_KEY) return "GENERAL_QUERY";
 
   const key = process.env.GEMINI_API_KEY;
-  // Use a simpler fallback model for intent detection
   const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${key}`;
 
   const prompt = `Classify into ONE: "BOOK_APPOINTMENT" or "GENERAL_QUERY". 
@@ -105,11 +124,7 @@ export async function detectIntentWithAI(message) {
     if (text.includes("BOOK_APPOINTMENT")) return "BOOK_APPOINTMENT";
     return "GENERAL_QUERY";
   } catch (error) {
-    console.warn("⚠️ Intent Detection Fallback:", error.message);
-    const lower = (message || "").toLowerCase();
-    if (lower.includes("book") || lower.includes("appointment") || lower.includes("schedule")) {
-      return "BOOK_APPOINTMENT";
-    }
+    console.warn("⚠️ Intent Detection Fallback (API Error):", error.message);
     return "GENERAL_QUERY";
   }
 }
