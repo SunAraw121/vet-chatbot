@@ -7,6 +7,14 @@ import cors from "cors";
 import path from "path";
 import { fileURLToPath } from "url";
 import fs from "fs";
+import fetch from "node-fetch";
+
+if (!global.fetch) {
+  global.fetch = fetch;
+  global.Headers = fetch.Headers;
+  global.Request = fetch.Request;
+  global.Response = fetch.Response;
+}
 
 // Verification log for environment variables
 console.log("🛠️  [ENV CHECK] MONGO_URI:", process.env.MONGO_URI ? "PRESET ✅" : "MISSING ❌");
