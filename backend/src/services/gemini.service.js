@@ -4,7 +4,17 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
  * Generate a veterinary-only AI response
  */
 export async function getVetAIResponse(userMessage, conversationHistory) {
-  const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+  console.log(`🤖 AI Request: ${userMessage.substring(0, 20)}...`);
+
+  if (!process.env.GEMINI_API_KEY) {
+    console.error("❌ GEMINI_API_KEY is missing from environment!");
+    return "Dr. Paw's office is closed (Missing API Key).";
+  }
+
+  const key = process.env.GEMINI_API_KEY;
+  console.log(`🔑 Key check: ${key.substring(0, 4)}...${key.substring(key.length - 4)} (Length: ${key.length})`);
+
+  const genAI = new GoogleGenerativeAI(key);
 
   const systemPrompt = `You are "Dr. Paw", a friendly and highly knowledgeable veterinary assistant. 
 
@@ -20,12 +30,12 @@ GUIDELINES:
 
   try {
     const model = genAI.getGenerativeModel({
-      model: "gemini-1.5-flash-latest",
+      model: "gemini-1.5-flash",
       systemInstruction: { parts: [{ text: systemPrompt }] }
     });
 
     const chat = model.startChat({
-      history: conversationHistory.map(msg => ({
+      history: (conversationHistory || []).map(msg => ({
         role: msg.role === "user" ? "user" : "model",
         parts: [{ text: msg.content }]
       }))
@@ -36,8 +46,10 @@ GUIDELINES:
     return response.text();
   } catch (error) {
     console.error("❌ Gemini AI Error:", error.message || error);
-    const errText = (error.message || "Unknown").substring(0, 50);
-    return `Dr. Paw is resting (Error: ${errText}...). Please try again!`;
+    if (error.message?.includes("403")) {
+      return "Dr. Paw is resting (Error: API Key Restricted or Invalid). Please check your Google Cloud Console.";
+    }
+    return `Dr. Paw is resting (Error: ${error.message?.substring(0, 50)}...). Try again!`;
   }
 }
 
@@ -45,17 +57,16 @@ GUIDELINES:
  * Detect if a user wants to book an appointment using AI for better precision
  */
 export async function detectIntentWithAI(message) {
+  if (!process.env.GEMINI_API_KEY) return "GENERAL_QUERY";
+
   const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
-  const prompt = `Classify the following user message into ONE of two categories: "BOOK_APPOINTMENT" or "GENERAL_QUERY".
-  "BOOK_APPOINTMENT" is for when the user EXPLICITLY wants to schedule, book, or make an appointment for a vet visit.
-  "GENERAL_QUERY" is for everything else, including greetings, generic vet questions, or talk about past visits.
-
-  Message: "${message}"
-  Category:`;
+  const prompt = `Classify into ONE: "BOOK_APPOINTMENT" or "GENERAL_QUERY". 
+  Choose "BOOK_APPOINTMENT" only if they want a new appointment.
+  Message: "${message}"`;
 
   try {
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-latest" });
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
     const result = await model.generateContent(prompt);
     const response = await result.response;
     const text = response.text().trim().toUpperCase();
@@ -63,9 +74,8 @@ export async function detectIntentWithAI(message) {
     if (text.includes("BOOK_APPOINTMENT")) return "BOOK_APPOINTMENT";
     return "GENERAL_QUERY";
   } catch (error) {
-    console.error("❌ Intent AI Error:", error.message || error);
-    // Fallback to basic keywords
-    const lower = message.toLowerCase();
+    console.warn("⚠️ Intent Detection Fallback:", error.message);
+    const lower = (message || "").toLowerCase();
     if (lower.includes("book") || lower.includes("appointment") || lower.includes("schedule")) {
       return "BOOK_APPOINTMENT";
     }

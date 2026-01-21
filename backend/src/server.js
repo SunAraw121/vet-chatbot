@@ -53,6 +53,24 @@ app.post("/api/chat", (req, res, next) => {
 app.get("/api/conversations/:sessionId", getConversationHistory);
 app.get("/api/appointments", getAppointments);
 
+// Test AI Endpoint
+app.get("/api/test-ai", async (req, res) => {
+  try {
+    const { detectIntentWithAI, getVetAIResponse } = await import("./services/gemini.service.js");
+    const intent = await detectIntentWithAI("hello");
+    const response = await getVetAIResponse("Hi Dr. Paw", []);
+    res.json({ status: "SUCCESS", intent, response });
+  } catch (error) {
+    res.status(500).json({
+      status: "FAILED",
+      message: error.message,
+      stack: error.stack,
+      key_present: !!process.env.GEMINI_API_KEY,
+      key_length: process.env.GEMINI_API_KEY?.length
+    });
+  }
+});
+
 // Health check
 app.get("/api/health", (req, res) => {
   res.json({
