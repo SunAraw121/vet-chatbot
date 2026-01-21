@@ -29,26 +29,42 @@ GUIDELINES:
 - If the user wants to book an appointment, let the system handle the booking flow, but you can say "I can help you with that! Just say 'Book Appointment'."`;
 
   try {
-    // STABLE: Use gemini-pro directly to ensure 100% availability
-    const model = genAI.getGenerativeModel({
-      model: "gemini-pro",
-      systemInstruction: { parts: [{ text: systemPrompt }] }
-    });
+    // ROBUST MODEL CASCADE: Try known models in order until one works
+    const modelsToTry = ["gemini-1.5-flash", "gemini-pro", "gemini-1.0-pro", "gemini-1.5-pro-latest"];
 
-    const chat = model.startChat({
-      history: (conversationHistory || []).map(msg => ({
-        role: msg.role === "user" ? "user" : "model",
-        parts: [{ text: msg.content }]
-      }))
-    });
+    let lastError;
+    for (const modelName of modelsToTry) {
+      try {
+        console.log(`🔄 Attempting model: ${modelName}`);
+        const model = genAI.getGenerativeModel({
+          model: modelName,
+          systemInstruction: { parts: [{ text: systemPrompt }] }
+        });
 
-    const result = await chat.sendMessage(userMessage);
-    const response = await result.response;
-    return response.text();
+        const chat = model.startChat({
+          history: (conversationHistory || []).map(msg => ({
+            role: msg.role === "user" ? "user" : "model",
+            parts: [{ text: msg.content }]
+          }))
+        });
+
+        const result = await chat.sendMessage(userMessage);
+        const response = await result.response;
+        return response.text(); // If successful, return immediately
+      } catch (e) {
+        console.warn(`⚠️ Model ${modelName} failed:`, e.message);
+        lastError = e;
+        // Continue to next model
+      }
+    }
+
+    // If all failed
+    throw lastError;
+
   } catch (error) {
     console.error("❌ Gemini AI Error Raw:", error);
     const fullMessage = error.message || JSON.stringify(error);
-    return `Dr. Paw Error Diagnostic: ${fullMessage}`;
+    return `Dr. Paw Error Diagnostic: All models failed. Last error: ${fullMessage}`;
   }
 }
 
