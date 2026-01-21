@@ -1,29 +1,29 @@
 import axios from "axios";
 
-// Standard production backend URL
+// Working production backend URL (NO trailing slash)
 const PROD_URL = "https://vet-chatbot-backend.onrender.com/api";
 
 export const getApiBase = () => {
   if (typeof window === "undefined") return PROD_URL;
 
-  const { hostname, protocol } = window.location;
+  const { hostname } = window.location;
 
-  // 1. Local Development
+  // 1. Local development
   if (hostname === "localhost" || hostname === "127.0.0.1") {
     return "http://localhost:4000/api";
   }
 
-  // 2. Same-origin (Running on Render backend directly)
+  // 2. Same-origin (Running on Render)
   if (hostname.includes("onrender.com")) {
     return "/api";
   }
 
-  // 3. Cross-origin (Vercel) - Must use absolute URL
+  // 3. Every other case (Vercel, etc)
   return PROD_URL;
 };
 
 export const API_BASE = getApiBase();
-console.log(`🔌 Initialized API_BASE: ${API_BASE}`);
+console.log(`🔌 [API] Target: ${API_BASE}`);
 
 /**
  * Sends a chat message to backend

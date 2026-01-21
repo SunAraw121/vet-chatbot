@@ -35,8 +35,8 @@ GUIDELINES:
     const response = await result.response;
     return response.text();
   } catch (error) {
-    console.error("❌ Gemini API Service Error:", error);
-    return "I'm sorry, I'm having a bit of trouble answering that right now. Could you please try again?";
+    console.error("❌ Gemini API Service Error:", error.message || error);
+    return `Dr. Paw is a bit overwhelmed (Error: ${error.message || 'Unknown'}). Please try again in a moment!`;
   }
 }
 
